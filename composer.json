@@ -1,0 +1,22 @@
+{
+  "name": "pup/placeholderapi",
+  "description": "A simple and efficient placeholder system for PocketMine-MP. Originally created for the Kyro core.",
+  "type": "library",
+  "keywords": ["pocketmine", "placeholder", "api"],
+  "license": "GPL-3.0-or-later",
+  "authors": [
+    {
+      "name": "Pupggers"
+    }
+  ],
+  "require": {
+    "pocketmine/pocketmine-mp": "^5.34.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "pup\\placeholderapi\\": "src/pup/placeholderapi/"
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
