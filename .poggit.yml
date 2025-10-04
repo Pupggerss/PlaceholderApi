@@ -2,5 +2,9 @@
 build-by-default: true
 branches:
 - main
-projects: []
+projects:
+  PlaceholderApi:
+    path: ""
+    model: virion
+    type: library
 ...
