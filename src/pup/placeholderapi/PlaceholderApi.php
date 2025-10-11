@@ -5,9 +5,15 @@ namespace pup\placeholderapi;
 use pocketmine\player\Player;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat as TF;
+use pup\placeholderapi\placeholder\ClosurePlaceholder;
+use pup\placeholderapi\placeholder\PlayerPlaceholder;
+use pup\placeholderapi\placeholder\ServerPlaceholder;
 
 class PlaceholderApi
 {
+    private static ?PlaceholderManager $manager = null;
+    private static bool $defaultsRegistered = false;
+
     /** @var array<string, string> */
     private static array $colorMap = [
         'black'        => TF::BLACK,
@@ -34,28 +40,236 @@ class PlaceholderApi
         'reset'        => TF::RESET
     ];
 
-    /** @var array<string, callable> */
-    private static array $customPlaceholders = [];
+    /**
+     * Check if the PlaceholderAPI has been initialized
+     *
+     * @return bool
+     */
+    public static function isInitialized(): bool
+    {
+        return self::$manager !== null;
+    }
 
     /**
-     * Register a custom placeholder handler
+     * Initialize the PlaceholderAPI
+     * MUST be called before registering any placeholders to ensure all placeholders
+     * are registered to the same manager instance.
      *
-     * @param string $placeholder The placeholder name
-     * @param callable $handler Function that returns the replacement value
      */
-    public static function registerPlaceholder(string $placeholder, callable $handler): void
+    public static function initialize(): void
     {
-        self::$customPlaceholders[strtolower($placeholder)] = $handler;
+        if (self::$manager !== null) {
+            return;
+        }
+
+        self::$manager = new PlaceholderManager();
+        self::registerDefaultPlaceholders();
+    }
+
+    /**
+     * Get the PlaceholderManager instance
+     *
+     * @return PlaceholderManager
+     */
+    public static function getManager(): PlaceholderManager
+    {
+        if (self::$manager === null) {
+            self::initialize();
+        }
+        return self::$manager;
+    }
+
+    private static function registerDefaultPlaceholders(): void
+    {
+        if (self::$defaultsRegistered) {
+            return;
+        }
+
+        $manager = self::getManager();
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return $player->getName();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_name"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return $player->getName();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_display"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return $player->getDisplayName();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_health"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)round($player->getHealth(), 1);
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_max_health"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)$player->getMaxHealth();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_food"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)$player->getHungerManager()->getFood();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_level"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)$player->getXpManager()->getXpLevel();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_xp"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)$player->getXpManager()->getCurrentTotalXp();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_gamemode"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return $player->getGamemode()->getEnglishName();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_ping"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)$player->getNetworkSession()->getPing();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_x"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)round($player->getPosition()->getX(), 2);
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_y"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)round($player->getPosition()->getY(), 2);
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_z"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return (string)round($player->getPosition()->getZ(), 2);
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends PlayerPlaceholder {
+            public function __construct() { parent::__construct("player_world"); }
+            protected function processPlayer(Player $player, ?string $params): string {
+                return $player->getWorld()->getFolderName();
+            }
+        });
+
+        // Server placeholders
+        $manager->registerPlaceholder(new class extends ServerPlaceholder {
+            public function __construct() { parent::__construct("server_motd"); }
+            protected function processServer(?string $params): string {
+                return Server::getInstance()->getMotd();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends ServerPlaceholder {
+            public function __construct() { parent::__construct("server_online"); }
+            protected function processServer(?string $params): string {
+                return (string)count(Server::getInstance()->getOnlinePlayers());
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends ServerPlaceholder {
+            public function __construct() { parent::__construct("server_max"); }
+            protected function processServer(?string $params): string {
+                return (string)Server::getInstance()->getMaxPlayers();
+            }
+        });
+
+        $manager->registerPlaceholder(new class extends ServerPlaceholder {
+            public function __construct() { parent::__construct("server_tps"); }
+            protected function processServer(?string $params): string {
+                return (string)round(Server::getInstance()->getTicksPerSecond(), 2);
+            }
+        });
+
+        foreach (self::$colorMap as $colorName => $colorCode) {
+            $manager->registerPlaceholder(new ClosurePlaceholder(
+                $colorName,
+                fn(?Player $player, ?string $params): string => $colorCode,
+                requiresPlayer: false,
+                supportsParameters: false
+            ));
+        }
+
+        self::$defaultsRegistered = true;
+    }
+
+    /**
+     * Register a custom placeholder using the Placeholder interface
+     *
+     * @param Placeholder $placeholder The placeholder to register
+     * @return bool True if registered successfully, false if identifier already exists
+     */
+    public static function registerCustomPlaceholder(Placeholder $placeholder): bool
+    {
+        return self::getManager()->registerPlaceholder($placeholder);
+    }
+
+    /**
+     * Register a custom placeholder handler using a callable (legacy support v1)
+     *
+     * @param string $identifier The placeholder identifier
+     * @param callable $handler Function that returns the replacement value (receives ?Player, ?string params)
+     * @param bool $requiresPlayer Whether this placeholder requires a player
+     * @param bool $supportsParameters Whether this placeholder supports parameters
+     * @return bool True if registered successfully
+     */
+    public static function registerPlaceholder(
+        string $identifier,
+        callable $handler,
+        bool $requiresPlayer = false,
+        bool $supportsParameters = false
+    ): bool {
+        $placeholder = new ClosurePlaceholder(
+            $identifier,
+            $handler(...),
+            $requiresPlayer,
+            $supportsParameters
+        );
+        return self::getManager()->registerPlaceholder($placeholder);
     }
 
     /**
      * Unregister a custom placeholder
      *
-     * @param string $placeholder The placeholder name to remove
+     * @param string $identifier The placeholder identifier to remove
+     * @return bool True if unregistered, false if not found
      */
-    public static function unregisterPlaceholder(string $placeholder): void
+    public static function unregisterPlaceholder(string $identifier): bool
     {
-        unset(self::$customPlaceholders[strtolower($placeholder)]);
+        return self::getManager()->unregisterPlaceholder($identifier);
     }
 
     /**
@@ -67,13 +281,19 @@ class PlaceholderApi
      */
     public static function parse(string $message, ?Player $player = null): string
     {
-        $message = self::parseColors($message);
-        if ($player !== null) {
-            $message = self::parsePlayerPlaceholders($message, $player);
-        }
-        $message = self::parseServerPlaceholders($message);
+        return self::getManager()->parse($message, $player);
+    }
 
-        return self::parseCustomPlaceholders($message, $player);
+    /**
+     * Parse multiple messages at once
+     *
+     * @param string[] $messages Array of messages to parse
+     * @param Player|null $player Optional player context
+     * @return string[] Parsed messages
+     */
+    public static function parseMultiple(array $messages, ?Player $player = null): array
+    {
+        return self::getManager()->parseMultiple($messages, $player);
     }
 
     /**
@@ -81,102 +301,15 @@ class PlaceholderApi
      *
      * @param string $message The message to parse
      * @return string The message with colors applied
+     * @deprecated Use parse() instead, colors are now handled as regular placeholders
      */
     public static function parseColors(string $message): string
     {
-        return preg_replace_callback(
-            '/{([a-zA-Z_]+)}/',
-            function($matches) {
-                $color = strtolower($matches[1]);
-                return self::$colorMap[$color] ?? $matches[0];
-            },
-            $message
-        );
-    }
-
-    /**
-     * Parse player-specific placeholders
-     *
-     * @param string $message The message to parse
-     * @param Player $player The player context
-     * @return string The parsed message
-     */
-    private static function parsePlayerPlaceholders(string $message, Player $player): string
-    {
-        $replacements = [
-            '{player}'          => $player->getName(),
-            '{player_name}'     => $player->getName(),
-            '{player_display}'  => $player->getDisplayName(),
-            '{player_health}'   => (string)round($player->getHealth(), 1),
-            '{player_max_health}' => (string)$player->getMaxHealth(),
-            '{player_food}'     => (string)$player->getHungerManager()->getFood(),
-            '{player_level}'    => (string)$player->getXpManager()->getXpLevel(),
-            '{player_xp}'       => (string)$player->getXpManager()->getCurrentTotalXp(),
-            '{player_gamemode}' => $player->getGamemode()->getEnglishName(),
-            '{player_ping}'     => (string)$player->getNetworkSession()->getPing(),
-            '{player_x}'        => (string)round($player->getPosition()->getX(), 2),
-            '{player_y}'        => (string)round($player->getPosition()->getY(), 2),
-            '{player_z}'        => (string)round($player->getPosition()->getZ(), 2),
-            '{player_world}'    => $player->getWorld()->getFolderName(),
-        ];
-
-        return str_replace(
-            array_keys($replacements),
-            array_values($replacements),
-            $message
-        );
-    }
-
-    /**
-     * Parse server-wide placeholders
-     *
-     * @param string $message The message to parse
-     * @return string The parsed message
-     */
-    private static function parseServerPlaceholders(string $message): string
-    {
-        $server = Server::getInstance();
-
-        $replacements = [
-            '{server_motd}'     => $server->getMotd(),
-            '{server_online}'   => (string)count($server->getOnlinePlayers()),
-            '{server_max}'      => (string)$server->getMaxPlayers(),
-            '{server_tps}'      => (string)round($server->getTicksPerSecond(), 2)
-        ];
-
-        return str_replace(
-            array_keys($replacements),
-            array_values($replacements),
-            $message
-        );
-    }
-
-    /**
-     * Parse custom registered placeholders
-     *
-     * @param string $message The message to parse
-     * @param Player|null $player Optional player context
-     * @return string The parsed message
-     */
-    private static function parseCustomPlaceholders(string $message, ?Player $player = null): string
-    {
-        return preg_replace_callback(
-            '/{([a-zA-Z0-9_]+)}/',
-            function($matches) use ($player) {
-                $placeholder = strtolower($matches[1]);
-                if (isset(self::$customPlaceholders[$placeholder])) {
-                    $result = call_user_func(self::$customPlaceholders[$placeholder], $player);
-                    return (string)$result;
-                }
-                return $matches[0];
-            },
-            $message
-        );
+        return self::parse($message);
     }
 
     /**
      * Revert formatted message back to placeholder format
-     * Idk what this would be useful for in some cases!
      *
      * @param string $formattedMessage The formatted message
      * @return string The message with placeholders
@@ -265,15 +398,5 @@ class PlaceholderApi
     public static function stripFormatting(string $message): string
     {
         return preg_replace('/§[0-9a-fk-or]/', '', $message);
-    }
-
-    /**
-     * Get all registered custom placeholders
-     *
-     * @return array<string> List of placeholder names
-     */
-    public static function getRegisteredPlaceholders(): array
-    {
-        return array_keys(self::$customPlaceholders);
     }
 }
