@@ -313,25 +313,6 @@ class PlayerKillsPlaceholder extends PlayerPlaceholder
 }
 ```
 
-## Utility Methods
-
-```php
-// Check if a placeholder is registered
-if (PlaceholderApi::isPlaceholderRegistered("player_coins")) {
-    // ...
-}
-
-// Get all registered placeholders
-$placeholders = PlaceholderApi::getRegisteredPlaceholders();
-
-// Strip all formatting from a message
-$clean = PlaceholderApi::stripFormatting("§aColored §bText");
-// Result: "Colored Text"
-
-// Unregister a placeholder
-PlaceholderApi::unregisterPlaceholder("my_custom");
-```
-
 ## Migration from v1.x
 
 All v1.x code continues to work! The old API is fully supported:
