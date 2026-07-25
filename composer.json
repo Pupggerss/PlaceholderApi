@@ -1,6 +1,6 @@
 {
   "name": "pup/placeholderapi",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A simple and efficient placeholder system for PocketMine-MP. Originally created for the Kyro core.",
   "type": "library",
   "keywords": ["pocketmine", "placeholder", "api", "virion", "altay", "pmmp", "plugin"],
