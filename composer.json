@@ -11,7 +11,7 @@
     }
   ],
   "require": {
-    "axolotl-pm/pocketmine-mp": "^5.0.0"
+    "vendor/axolotl-pm/pocketmine-mp": "^5.0.0"
   },
   "autoload": {
     "psr-4": {
