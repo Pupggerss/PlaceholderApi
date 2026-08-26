@@ -14,9 +14,9 @@
     "pocketmine/pocketmine-mp": "*"
   },
   "autoload": {
-    "psr-4": {
-      "pup\\placeholderapi\\": "src/"
-    }
+    "classmap": [
+      "src"
+    ]
   },
   "extra": {
     "virion": {
