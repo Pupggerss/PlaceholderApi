@@ -35,21 +35,35 @@ jobs:
             tail -n 1 || true
           )
 
+          # If no release tag exists, use the version from composer.json.
           if [[ -z "$LATEST" ]]; then
-            LATEST="0.0.0"
+            LATEST=$(php -r '
+              $json = json_decode(file_get_contents("composer.json"), true);
+              echo $json["version"] ?? "";
+            ')
+
+            if [[ -z "$LATEST" ]]; then
+              echo "ERROR: No Git tag or composer.json version found."
+              exit 1
+            fi
+          fi
+
+          if ! [[ "$LATEST" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid version: $LATEST"
+            exit 1
           fi
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST"
 
           # Look at commits since the previous release.
-          if [[ "$LATEST" == "0.0.0" ]]; then
-            COMMITS=$(git log --format='%s%n%b')
-          else
+          if git rev-parse "v${LATEST}" >/dev/null 2>&1; then
             COMMITS=$(git log "v${LATEST}..HEAD" --format='%s%n%b')
+          else
+            COMMITS=$(git log --format='%s%n%b')
           fi
 
           # Determine bump level.
-          if echo "$COMMITS" | grep -qE 'release:|^[a-zA-Z]+(\([^)]*\))?!:'; then
+          if echo "$COMMITS" | grep -qE '(^|[[:space:]])release:|^[a-zA-Z]+(\([^)]*\))?!:'; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
             BUMP="major"
 
