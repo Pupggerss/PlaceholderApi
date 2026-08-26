@@ -26,71 +26,34 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Find latest semantic version tag.
-          LATEST=$(
-            git tag -l 'v*.*.*' |
-            sed 's/^v//' |
-            grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' |
-            sort -V |
-            tail -n 1 || true
-          )
+          VERSION=$(php -r '
+            $json = json_decode(file_get_contents("composer.json"), true);
+            echo $json["version"] ?? "";
+          ')
 
-          # If no release tag exists, use the version from composer.json.
-          if [[ -z "$LATEST" ]]; then
-            LATEST=$(php -r '
-              $json = json_decode(file_get_contents("composer.json"), true);
-              echo $json["version"] ?? "";
-            ')
-
-            if [[ -z "$LATEST" ]]; then
-              echo "ERROR: No Git tag or composer.json version found."
-              exit 1
-            fi
-          fi
-
-          if ! [[ "$LATEST" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: Invalid version: $LATEST"
+          if [[ -z "$VERSION" ]]; then
+            echo "ERROR: No version found in composer.json."
             exit 1
           fi
 
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST"
-
-          # Look at commits since the previous release.
-          if git rev-parse "v${LATEST}" >/dev/null 2>&1; then
-            COMMITS=$(git log "v${LATEST}..HEAD" --format='%s%n%b')
-          else
-            COMMITS=$(git log --format='%s%n%b')
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid version in composer.json: $VERSION"
+            exit 1
           fi
 
-          # Determine bump level.
-          if echo "$COMMITS" | grep -qE '(^|[[:space:]])release:|^[a-zA-Z]+(\([^)]*\))?!:'; then
-            NEW_VERSION="$((MAJOR + 1)).0.0"
-            BUMP="major"
+          echo "Version found: $VERSION"
 
-          elif echo "$COMMITS" | grep -qE '^feat(\([^)]*\))?:'; then
-            NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
-            BUMP="minor"
+          # Check whether this exact tag already exists.
+          # No "v" prefix is used.
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists. Skipping release."
 
-          elif echo "$COMMITS" | grep -qE '^(fix|perf|refactor|revert)(\([^)]*\))?:'; then
-            NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
-            BUMP="patch"
-
-          else
-            echo "No release-worthy commits found."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          NEW_TAG="v${NEW_VERSION}"
-
-          echo "Latest: $LATEST"
-          echo "Bump:   $BUMP"
-          echo "New:    $NEW_TAG"
-
-          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
-          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Create tag
